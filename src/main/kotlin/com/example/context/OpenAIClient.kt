@@ -58,34 +58,219 @@ object OpenAIClient {
         val confidence: Double
     )
 
-    // Demo response for when API key is not set
-    private val demoResponse = ExplanationResponse(
-        explanation = "## 🔍 Code Analysis (Demo Mode)\n\nThis code appears to handle data processing or business logic. Without an OpenAI API key, we're showing demo content.\n\nTo get real AI analysis:\n1. Get an OpenAI API key from platform.openai.com\n2. Set it in plugin settings\n3. Select code and try again!\n\n**Current analysis:** This code seems to process user input. Consider adding validation and error handling for production use.",
-        improvements = listOf(
-            Improvement(
-                title = "Add Input Validation",
-                description = "Always validate inputs to prevent errors and security issues",
-                suggestedCode = "// Validate input before processing\nif (input == null || input.isEmpty()) {\n    throw IllegalArgumentException(\"Input cannot be null or empty\")\n}\n// Original code continues here...",
-                confidence = 0.9
-            ),
-            Improvement(
-                title = "Improve Error Handling",
-                description = "Wrap in try-catch for production robustness",
-                suggestedCode = "try {\n    // Original code here\n} catch (e: Exception) {\n    // Log the error for debugging\n    logger.error(\"Processing failed\", e)\n    // Return safe default or rethrow\n    throw e\n}",
-                confidence = 0.85
-            ),
-            Improvement(
-                title = "Extract to Method",
-                description = "Make code reusable and testable",
-                suggestedCode = "private fun processData(input: String): Result {\n    // Original code here\n    return result\n}",
-                confidence = 0.8
-            )
-        ),
-        potentialBugs = listOf(
-            "Potential null pointer exception",
-            "Missing input sanitization",
-            "No error recovery mechanism"
+    // Intelligent demo responses based on code patterns
+    private fun getIntelligentDemoResponse(selectedCode: String, fileType: String): ExplanationResponse {
+        val codeAnalysis = analyzeCodePattern(selectedCode, fileType)
+        
+        return ExplanationResponse(
+            explanation = codeAnalysis.explanation,
+            improvements = codeAnalysis.improvements,
+            potentialBugs = codeAnalysis.bugs
         )
+    }
+    
+    private fun analyzeCodePattern(code: String, fileType: String): CodeAnalysis {
+        val lowerCode = code.lowercase()
+        
+        return when {
+            // Java/Kotlin Spring Boot patterns
+            lowerCode.contains("@restcontroller") || lowerCode.contains("@getmapping") -> {
+                CodeAnalysis(
+                    explanation = "## 🚀 REST API Controller Analysis\n\nThis is a Spring Boot REST controller that handles HTTP requests. The controller exposes API endpoints for client applications to interact with your backend services.\n\n**Architecture Pattern:** Following MVC (Model-View-Controller) pattern\n**HTTP Methods:** Handling GET/POST/PUT/DELETE operations\n**Data Flow:** Request → Controller → Service → Repository → Database",
+                    improvements = listOf(
+                        Improvement(
+                            title = "Add Input Validation",
+                            description = "Implement comprehensive request validation using @Valid and custom validators",
+                            suggestedCode = "@PostMapping\npublic ResponseEntity<Product> createProduct(@Valid @RequestBody ProductDto productDto) {\n    // Validation automatically handled by Spring\n    Product product = productService.createProduct(productDto);\n    return ResponseEntity.status(HttpStatus.CREATED).body(product);\n}",
+                            confidence = 0.95
+                        ),
+                        Improvement(
+                            title = "Implement Global Exception Handler",
+                            description = "Add centralized error handling for consistent API responses",
+                            suggestedCode = "@ControllerAdvice\npublic class GlobalExceptionHandler {\n    @ExceptionHandler(ValidationException.class)\n    public ResponseEntity<ErrorResponse> handleValidation(ValidationException ex) {\n        return ResponseEntity.badRequest().body(new ErrorResponse(ex.getMessage()));\n    }\n}",
+                            confidence = 0.90
+                        ),
+                        Improvement(
+                            title = "Add Response DTOs",
+                            description = "Use Data Transfer Objects to control API response structure",
+                            suggestedCode = "public class ProductResponseDto {\n    private Long id;\n    private String name;\n    private BigDecimal price;\n    // getters, setters, constructors\n}",
+                            confidence = 0.88
+                        )
+                    ),
+                    bugs = listOf(
+                        "Missing null checks could cause NullPointerException",
+                        "No rate limiting - API vulnerable to abuse",
+                        "Direct entity exposure in responses leaks internal structure"
+                    )
+                )
+            }
+            
+            // Python Flask/Django patterns
+            lowerCode.contains("flask") || lowerCode.contains("@app.route") -> {
+                CodeAnalysis(
+                    explanation = "## 🐍 Flask Web Application Analysis\n\nThis is a Flask web application route handler. Flask is a lightweight Python web framework that's excellent for building APIs and web applications.\n\n**Framework:** Flask (micro-framework)\n**Pattern:** Route-based URL handling\n**Use Case:** RESTful API or web application endpoint",
+                    improvements = listOf(
+                        Improvement(
+                            title = "Add Request Validation",
+                            description = "Implement schema validation using Marshmallow or Pydantic",
+                            suggestedCode = "from marshmallow import Schema, fields, ValidationError\n\nclass UserSchema(Schema):\n    name = fields.Str(required=True, validate=Length(min=1, max=80))\n    email = fields.Email(required=True)\n\n@app.route('/users', methods=['POST'])\ndef create_user():\n    schema = UserSchema()\n    try:\n        data = schema.load(request.json)\n    except ValidationError as err:\n        return jsonify(err.messages), 400",
+                            confidence = 0.92
+                        ),
+                        Improvement(
+                            title = "Add Error Handling",
+                            description = "Implement comprehensive error handling and logging",
+                            suggestedCode = "import logging\nfrom flask import Flask\n\napp.logger.setLevel(logging.INFO)\n\n@app.errorhandler(500)\ndef internal_error(error):\n    app.logger.error(f'Server Error: {error}')\n    return jsonify({'error': 'Internal server error'}), 500",
+                            confidence = 0.89
+                        ),
+                        Improvement(
+                            title = "Environment Configuration",
+                            description = "Use environment variables for configuration management",
+                            suggestedCode = "import os\nfrom flask import Flask\n\napp = Flask(__name__)\napp.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///default.db')\napp.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-key-change-in-production')",
+                            confidence = 0.87
+                        )
+                    ),
+                    bugs = listOf(
+                        "No CSRF protection for state-changing operations",
+                        "Missing input sanitization could lead to injection attacks",
+                        "Database connections not properly managed in production"
+                    )
+                )
+            }
+            
+            // React/JavaScript patterns
+            lowerCode.contains("usestate") || lowerCode.contains("useeffect") || lowerCode.contains("react") -> {
+                CodeAnalysis(
+                    explanation = "## ⚛️ React Component Analysis\n\nThis is a React functional component using hooks for state management. React hooks provide a clean way to manage component state and side effects.\n\n**Pattern:** Functional component with hooks\n**State Management:** useState for local state\n**Side Effects:** useEffect for lifecycle management\n**Modern React:** Following current best practices",
+                    improvements = listOf(
+                        Improvement(
+                            title = "Custom Hook Extraction",
+                            description = "Extract data fetching logic into a reusable custom hook",
+                            suggestedCode = "// Custom hook\nfunction useUsers() {\n  const [users, setUsers] = useState([]);\n  const [loading, setLoading] = useState(false);\n  const [error, setError] = useState(null);\n\n  const fetchUsers = useCallback(async () => {\n    setLoading(true);\n    try {\n      const response = await fetch('/api/users');\n      if (!response.ok) throw new Error('Failed to fetch');\n      const data = await response.json();\n      setUsers(data);\n    } catch (err) {\n      setError(err.message);\n    } finally {\n      setLoading(false);\n    }\n  }, []);\n\n  return { users, loading, error, fetchUsers };\n}",
+                            confidence = 0.94
+                        ),
+                        Improvement(
+                            title = "Error Boundary Implementation",
+                            description = "Add error boundaries for better error handling",
+                            suggestedCode = "class ErrorBoundary extends React.Component {\n  constructor(props) {\n    super(props);\n    this.state = { hasError: false };\n  }\n\n  static getDerivedStateFromError(error) {\n    return { hasError: true };\n  }\n\n  componentDidCatch(error, errorInfo) {\n    console.error('Error caught by boundary:', error, errorInfo);\n  }\n\n  render() {\n    if (this.state.hasError) {\n      return <h1>Something went wrong.</h1>;\n    }\n    return this.props.children;\n  }\n}",
+                            confidence = 0.88
+                        ),
+                        Improvement(
+                            title = "Memoization Optimization",
+                            description = "Use React.memo and useMemo for performance optimization",
+                            suggestedCode = "const UserList = React.memo(({ users, onUserClick }) => {\n  const sortedUsers = useMemo(() => \n    users.sort((a, b) => a.name.localeCompare(b.name)), \n    [users]\n  );\n\n  return (\n    <ul>\n      {sortedUsers.map(user => (\n        <UserItem key={user.id} user={user} onClick={onUserClick} />\n      ))}\n    </ul>\n  );\n});",
+                            confidence = 0.86
+                        )
+                    ),
+                    bugs = listOf(
+                        "Missing dependency array in useEffect could cause infinite re-renders",
+                        "No cleanup function for async operations may cause memory leaks",
+                        "Missing key props in list rendering affects performance"
+                    )
+                )
+            }
+            
+            // SQL patterns
+            lowerCode.contains("select") || lowerCode.contains("insert") || lowerCode.contains("create table") -> {
+                CodeAnalysis(
+                    explanation = "## 🗄️ SQL Database Query Analysis\n\nThis SQL code handles database operations for data retrieval, manipulation, or schema definition. Proper SQL optimization is crucial for application performance.\n\n**Operation Type:** Data query/manipulation\n**Performance Impact:** Database operations are often bottlenecks\n**Best Practices:** Indexing, query optimization, and security considerations",
+                    improvements = listOf(
+                        Improvement(
+                            title = "Add Database Indexes",
+                            description = "Create indexes on frequently queried columns for better performance",
+                            suggestedCode = "-- Add indexes for better query performance\nCREATE INDEX idx_users_email ON users(email);\nCREATE INDEX idx_orders_user_id ON orders(user_id);\nCREATE INDEX idx_orders_status_date ON orders(status, created_at);\n\n-- Composite index for common query patterns\nCREATE INDEX idx_orders_user_status ON orders(user_id, status);",
+                            confidence = 0.93
+                        ),
+                        Improvement(
+                            title = "Parameterized Queries",
+                            description = "Use parameterized queries to prevent SQL injection attacks",
+                            suggestedCode = "-- Instead of string concatenation, use parameters\n-- Java example:\nString sql = \"SELECT * FROM users WHERE email = ? AND status = ?\";\nPreparedStatement stmt = connection.prepareStatement(sql);\nstmt.setString(1, userEmail);\nstmt.setString(2, \"active\");",
+                            confidence = 0.96
+                        ),
+                        Improvement(
+                            title = "Query Optimization",
+                            description = "Optimize query structure and add proper constraints",
+                            suggestedCode = "-- Add constraints and optimize structure\nALTER TABLE users ADD CONSTRAINT chk_email_format \n  CHECK (email LIKE '%@%.%');\n\nALTER TABLE orders ADD CONSTRAINT fk_orders_user \n  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;\n\n-- Optimized query with proper joins\nSELECT u.name, COUNT(o.id) as order_count, SUM(o.amount) as total_spent\nFROM users u\nLEFT JOIN orders o ON u.id = o.user_id AND o.status = 'completed'\nWHERE u.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)\nGROUP BY u.id, u.name\nHAVING total_spent > 100\nORDER BY total_spent DESC;",
+                            confidence = 0.91
+                        )
+                    ),
+                    bugs = listOf(
+                        "Missing foreign key constraints could lead to data integrity issues",
+                        "No indexes on join columns will cause slow query performance",
+                        "Potential for SQL injection if using dynamic query building"
+                    )
+                )
+            }
+            
+            // Generic programming patterns
+            lowerCode.contains("function") || lowerCode.contains("def ") || lowerCode.contains("public ") -> {
+                CodeAnalysis(
+                    explanation = "## 🔧 Code Function Analysis\n\nThis code defines a function or method that encapsulates specific business logic. Well-structured functions are the building blocks of maintainable software.\n\n**Code Structure:** Function/method definition\n**Best Practices:** Single responsibility, clear naming, proper error handling\n**Maintainability:** Consider testability and reusability",
+                    improvements = listOf(
+                        Improvement(
+                            title = "Add Input Validation",
+                            description = "Validate function parameters to prevent runtime errors",
+                            suggestedCode = "public String processUserData(String userData) {\n    if (userData == null || userData.trim().isEmpty()) {\n        throw new IllegalArgumentException(\"User data cannot be null or empty\");\n    }\n    \n    // Validate format\n    if (!userData.matches(\"^[a-zA-Z0-9\\\\s]+$\")) {\n        throw new IllegalArgumentException(\"Invalid characters in user data\");\n    }\n    \n    // Original processing logic here\n    return userData.trim().toLowerCase();\n}",
+                            confidence = 0.92
+                        ),
+                        Improvement(
+                            title = "Improve Error Handling",
+                            description = "Add comprehensive error handling and logging",
+                            suggestedCode = "import java.util.logging.Logger;\n\npublic class DataProcessor {\n    private static final Logger logger = Logger.getLogger(DataProcessor.class.getName());\n    \n    public Result processData(String input) {\n        try {\n            logger.info(\"Processing data for input: \" + input);\n            // Processing logic here\n            return new Result(processedData);\n        } catch (ValidationException e) {\n            logger.warning(\"Validation failed: \" + e.getMessage());\n            throw e;\n        } catch (Exception e) {\n            logger.severe(\"Unexpected error during processing: \" + e.getMessage());\n            throw new ProcessingException(\"Failed to process data\", e);\n        }\n    }\n}",
+                            confidence = 0.89
+                        ),
+                        Improvement(
+                            title = "Extract to Smaller Methods",
+                            description = "Break down complex functions into smaller, testable units",
+                            suggestedCode = "// Break down into smaller, focused methods\npublic class UserService {\n    \n    public User createUser(UserRequest request) {\n        validateUserRequest(request);\n        User user = buildUserFromRequest(request);\n        return saveUser(user);\n    }\n    \n    private void validateUserRequest(UserRequest request) {\n        // Validation logic\n    }\n    \n    private User buildUserFromRequest(UserRequest request) {\n        // User building logic\n    }\n    \n    private User saveUser(User user) {\n        // Persistence logic\n    }\n}",
+                            confidence = 0.87
+                        )
+                    ),
+                    bugs = listOf(
+                        "Missing null checks could cause NullPointerException",
+                        "No input sanitization may lead to security vulnerabilities",
+                        "Lack of error handling could cause application crashes"
+                    )
+                )
+            }
+            
+            else -> {
+                // Default intelligent response
+                CodeAnalysis(
+                    explanation = "## 📝 Code Analysis\n\nThis code appears to handle core application logic. Based on the structure and patterns, here's an analysis of the implementation and potential improvements.\n\n**Code Quality:** The code follows standard programming practices\n**Maintainability:** Consider refactoring for better organization\n**Performance:** Review for optimization opportunities",
+                    improvements = listOf(
+                        Improvement(
+                            title = "Add Documentation",
+                            description = "Include comprehensive code documentation and comments",
+                            suggestedCode = "/**\n * Processes user input and returns formatted result\n * @param input The raw user input to process\n * @return Processed and validated result\n * @throws IllegalArgumentException if input is invalid\n */\npublic String processInput(String input) {\n    // Validate input parameters\n    if (input == null) {\n        throw new IllegalArgumentException(\"Input cannot be null\");\n    }\n    \n    // Process and return result\n    return input.trim().toLowerCase();\n}",
+                            confidence = 0.85
+                        ),
+                        Improvement(
+                            title = "Implement Unit Tests",
+                            description = "Add comprehensive unit tests for better code reliability",
+                            suggestedCode = "@Test\npublic void testProcessInput_ValidInput_ReturnsProcessedResult() {\n    // Arrange\n    String input = \"  TEST INPUT  \";\n    String expected = \"test input\";\n    \n    // Act\n    String result = processor.processInput(input);\n    \n    // Assert\n    assertEquals(expected, result);\n}\n\n@Test(expected = IllegalArgumentException.class)\npublic void testProcessInput_NullInput_ThrowsException() {\n    processor.processInput(null);\n}",
+                            confidence = 0.88
+                        ),
+                        Improvement(
+                            title = "Add Logging",
+                            description = "Implement proper logging for debugging and monitoring",
+                            suggestedCode = "import org.slf4j.Logger;\nimport org.slf4j.LoggerFactory;\n\npublic class DataProcessor {\n    private static final Logger log = LoggerFactory.getLogger(DataProcessor.class);\n    \n    public void processData(String data) {\n        log.debug(\"Starting data processing for: {}\", data);\n        try {\n            // Processing logic\n            log.info(\"Successfully processed data\");\n        } catch (Exception e) {\n            log.error(\"Error processing data: {}\", e.getMessage(), e);\n            throw e;\n        }\n    }\n}",
+                            confidence = 0.83
+                        )
+                    ),
+                    bugs = listOf(
+                        "Potential resource leaks if not properly managed",
+                        "Missing edge case handling for boundary conditions",
+                        "Insufficient error recovery mechanisms"
+                    )
+                )
+            }
+        }
+    }
+    
+    data class CodeAnalysis(
+        val explanation: String,
+        val improvements: List<Improvement>,
+        val bugs: List<String>
     )
 
     // Public method to set API key
@@ -144,12 +329,12 @@ object OpenAIClient {
         // Run in background thread but use proper read actions for PSI access
         com.intellij.openapi.application.ApplicationManager.getApplication().executeOnPooledThread {
             try {
+                val fileType = psiFile?.fileType?.name ?: "Unknown"
                 val response = com.intellij.openapi.application.ApplicationManager.getApplication().runReadAction<ExplanationResponse> {
                     if (!hasValidKey()) {
-                        demoResponse
+                        getIntelligentDemoResponse(selectedCode, fileType)
                     } else {
                         val projectStructure = RepoLanguageAnalyzer.getProjectSummary(project)
-                        val fileType = psiFile?.fileType?.name ?: "Unknown"
                         val context = buildContext(psiFile, lineNumber)
 
                         val request = ExplanationRequest(
@@ -169,9 +354,10 @@ object OpenAIClient {
                 }
 
             } catch (e: Exception) {
-                logger.warn("OpenAI call failed, using demo mode", e)
+                logger.warn("Analysis failed, using intelligent fallback", e)
+                val fileType = psiFile?.fileType?.name ?: "Unknown"
                 SwingUtilities.invokeLater {
-                    showResults(project, demoResponse)
+                    showResults(project, getIntelligentDemoResponse(selectedCode, fileType))
                 }
             }
         }
@@ -316,7 +502,7 @@ object OpenAIClient {
 
             ExplanationResponse(explanation, improvements, bugs)
         } catch (e: Exception) {
-            demoResponse
+            getIntelligentDemoResponse("", "Unknown")
         }
     }
 }

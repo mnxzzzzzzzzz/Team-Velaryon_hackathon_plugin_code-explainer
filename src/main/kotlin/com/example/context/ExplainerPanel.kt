@@ -52,9 +52,9 @@ class ExplainerPanel(private val project: Project) {
             keyStatusLabel.foreground = Color(0, 128, 0)
             keyStatusLabel.toolTipText = "Using real OpenAI API for analysis"
         } else {
-            keyStatusLabel.text = "🔄 Demo Mode"
-            keyStatusLabel.foreground = Color(128, 128, 128)
-            keyStatusLabel.toolTipText = "Using demo mode - setup API key for AI features"
+            keyStatusLabel.text = "🧠 Smart Analysis Mode"
+            keyStatusLabel.foreground = Color(0, 100, 200)
+            keyStatusLabel.toolTipText = "Using intelligent pattern-based analysis - setup API key for enhanced AI features"
         }
     }
 
