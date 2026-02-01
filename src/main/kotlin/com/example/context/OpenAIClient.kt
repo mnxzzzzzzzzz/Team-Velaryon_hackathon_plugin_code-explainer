@@ -17,19 +17,20 @@ import javax.swing.*
 object OpenAIClient {
     private val logger = Logger.getInstance(OpenAIClient::class.java)
 
-    // Store key in IntelliJ's settings
-    private fun getSavedKey(): String {
-        return PropertiesComponent.getInstance().getValue("code.explainer.openai.key", "")
+    // API KEY SETUP - Replace with your key for local development
+    // For security, the actual key is not stored in the repository
+    private val DIRECT_API_KEY = "your-openai-api-key-here"  // TODO: Replace with your actual key locally
+    
+    // Current API key - checks multiple sources for flexibility
+    private var apiKey: String = when {
+        DIRECT_API_KEY != "your-openai-api-key-here" && DIRECT_API_KEY.startsWith("sk-") -> DIRECT_API_KEY
+        !System.getenv("OPENAI_API_KEY").isNullOrBlank() -> System.getenv("OPENAI_API_KEY")
+        else -> "demo-mode"
     }
 
     private fun saveKey(key: String) {
         PropertiesComponent.getInstance().setValue("code.explainer.openai.key", key)
     }
-
-    // Current API key (checks saved key first, then env var, then demo mode)
-    private var apiKey: String = getSavedKey().takeIf { it.isNotBlank() }
-        ?: System.getenv("OPENAI_API_KEY").takeIf { !it.isNullOrBlank() }
-        ?: "demo-mode"  // Fallback to demo mode
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
@@ -95,7 +96,16 @@ object OpenAIClient {
 
     // Check if valid key is set
     fun hasValidKey(): Boolean {
-        return apiKey.isNotBlank() && apiKey != "demo-mode" && apiKey.startsWith("sk-")
+        println("DEBUG: Checking API key...")
+        println("DEBUG: apiKey = '$apiKey'")
+        println("DEBUG: DIRECT_API_KEY = '$DIRECT_API_KEY'")
+        println("DEBUG: apiKey.isNotBlank() = ${apiKey.isNotBlank()}")
+        println("DEBUG: apiKey != 'demo-mode' = ${apiKey != "demo-mode"}")
+        println("DEBUG: apiKey.startsWith('sk-') = ${apiKey.startsWith("sk-")}")
+        
+        val isValid = apiKey.isNotBlank() && apiKey != "demo-mode" && apiKey.startsWith("sk-")
+        println("DEBUG: hasValidKey() returning: $isValid")
+        return isValid
     }
 
     // Simple one-method setup
@@ -131,33 +141,38 @@ object OpenAIClient {
         psiFile: PsiFile?,
         lineNumber: Int
     ) {
-        try {
-            val response = if (!hasValidKey()) {
-                demoResponse
-            } else {
-                val projectStructure = RepoLanguageAnalyzer.getProjectSummary(project)
-                val fileType = psiFile?.fileType?.name ?: "Unknown"
-                val context = buildContext(psiFile, lineNumber)
+        // Run in background thread but use proper read actions for PSI access
+        com.intellij.openapi.application.ApplicationManager.getApplication().executeOnPooledThread {
+            try {
+                val response = com.intellij.openapi.application.ApplicationManager.getApplication().runReadAction<ExplanationResponse> {
+                    if (!hasValidKey()) {
+                        demoResponse
+                    } else {
+                        val projectStructure = RepoLanguageAnalyzer.getProjectSummary(project)
+                        val fileType = psiFile?.fileType?.name ?: "Unknown"
+                        val context = buildContext(psiFile, lineNumber)
 
-                val request = ExplanationRequest(
-                    selectedCode = selectedCode,
-                    fileType = fileType,
-                    projectStructure = projectStructure,
-                    context = context
-                )
+                        val request = ExplanationRequest(
+                            selectedCode = selectedCode,
+                            fileType = fileType,
+                            projectStructure = projectStructure,
+                            context = context
+                        )
 
-                callOpenAI(request)
-            }
+                        callOpenAI(request)
+                    }
+                }
 
-            // Show results in tool window on EDT
-            SwingUtilities.invokeLater {
-                showResults(project, response)
-            }
+                // Show results in tool window on EDT
+                SwingUtilities.invokeLater {
+                    showResults(project, response)
+                }
 
-        } catch (e: Exception) {
-            logger.warn("OpenAI call failed, using demo mode", e)
-            SwingUtilities.invokeLater {
-                showResults(project, demoResponse)
+            } catch (e: Exception) {
+                logger.warn("OpenAI call failed, using demo mode", e)
+                SwingUtilities.invokeLater {
+                    showResults(project, demoResponse)
+                }
             }
         }
     }
@@ -220,19 +235,28 @@ object OpenAIClient {
     private fun buildContext(psiFile: PsiFile?, lineNumber: Int): String {
         if (psiFile == null) return ""
 
-        val context = StringBuilder()
+        return try {
+            val context = StringBuilder()
 
-        // Get imports
-        val imports = psiFile.children
-            .filter { it.text.startsWith("import") || it.text.startsWith("package") }
-            .take(5)
-            .joinToString("\n") { it.text }
+            // Get imports safely
+            val children = psiFile.children
+            val imports = children
+                .filter { 
+                    val text = it.text
+                    text.startsWith("import") || text.startsWith("package") 
+                }
+                .take(5)
+                .joinToString("\n") { it.text }
 
-        if (imports.isNotBlank()) {
-            context.append("Imports:\n$imports\n\n")
+            if (imports.isNotBlank()) {
+                context.append("Imports:\n$imports\n\n")
+            }
+
+            context.toString()
+        } catch (e: Exception) {
+            // If PSI access fails, return empty context
+            ""
         }
-
-        return context.toString()
     }
 
     private fun callOpenAI(request: ExplanationRequest): ExplanationResponse {

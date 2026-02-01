@@ -17,34 +17,14 @@ class ExplainAction : AnAction() {
             return
         }
 
-        // Optional: Prompt for API key on first use
-        if (!OpenAIClient.hasValidKey()) {
-            val option = JOptionPane.showConfirmDialog(
-                null,
-                "Using demo mode. Want to setup OpenAI API key for AI features?\n\n(Free $5 credit for new users)",
-                "Setup API Key",
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.QUESTION_MESSAGE
-            )
+        // Skip the dialog for now to avoid threading issues
+        // The user can set API key in Settings if needed
 
-            if (option == JOptionPane.YES_OPTION) {
-                OpenAIClient.quickSetupApiKey(project)
-            }
-        }
-
-        // Trigger explanation
+        // Trigger explanation - now handles threading properly
         val psiFile = e.getData(CommonDataKeys.PSI_FILE)
         val lineNumber = editor.caretModel.logicalPosition.line
         
-        // Run in background thread
-        Thread {
-            try {
-                OpenAIClient.explainCodeSync(project, selection, psiFile, lineNumber)
-            } catch (e: Exception) {
-                // Handle error
-                println("Error explaining code: ${e.message}")
-            }
-        }.start()
+        OpenAIClient.explainCodeSync(project, selection, psiFile, lineNumber)
     }
 
     override fun update(e: AnActionEvent) {
