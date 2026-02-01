@@ -8,8 +8,9 @@ import com.intellij.psi.PsiFile
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
-import java.awt.BorderLayout
-import java.awt.Font
+import java.awt.*
+import java.awt.event.ActionEvent
+import java.awt.event.ActionListener
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 import javax.swing.*
@@ -74,7 +75,8 @@ object OpenAIClient {
         return ExplanationResponse(
             explanation = codeAnalysis.explanation,
             improvements = codeAnalysis.improvements,
-            potentialBugs = codeAnalysis.bugs
+            potentialBugs = codeAnalysis.bugs,
+            githubRepos = codeAnalysis.githubRepos
         )
     }
     
@@ -110,6 +112,26 @@ object OpenAIClient {
                         "Missing null checks could cause NullPointerException",
                         "No rate limiting - API vulnerable to abuse",
                         "Direct entity exposure in responses leaks internal structure"
+                    ),
+                    githubRepos = listOf(
+                        GitHubRepo(
+                            name = "Spring Boot Starter Parent",
+                            url = "https://github.com/spring-projects/spring-boot",
+                            description = "Official Spring Boot framework with comprehensive REST API support",
+                            stars = "70.2k"
+                        ),
+                        GitHubRepo(
+                            name = "Spring Data JPA",
+                            url = "https://github.com/spring-projects/spring-data-jpa",
+                            description = "Simplifies data access layer implementation for JPA-based repositories",
+                            stars = "2.9k"
+                        ),
+                        GitHubRepo(
+                            name = "MapStruct",
+                            url = "https://github.com/mapstruct/mapstruct",
+                            description = "Code generator for mapping between Java bean types (perfect for DTOs)",
+                            stars = "6.8k"
+                        )
                     )
                 )
             }
@@ -142,6 +164,26 @@ object OpenAIClient {
                         "No CSRF protection for state-changing operations",
                         "Missing input sanitization could lead to injection attacks",
                         "Database connections not properly managed in production"
+                    ),
+                    githubRepos = listOf(
+                        GitHubRepo(
+                            name = "Flask-RESTful",
+                            url = "https://github.com/flask-restful/flask-restful",
+                            description = "Simple framework for creating REST APIs with Flask",
+                            stars = "6.8k"
+                        ),
+                        GitHubRepo(
+                            name = "Flask-Migrate",
+                            url = "https://github.com/miguelgrinberg/flask-migrate",
+                            description = "SQLAlchemy database migrations for Flask applications using Alembic",
+                            stars = "2.3k"
+                        ),
+                        GitHubRepo(
+                            name = "Marshmallow",
+                            url = "https://github.com/marshmallow-code/marshmallow",
+                            description = "Lightweight library for converting complex datatypes to and from native Python datatypes",
+                            stars = "6.9k"
+                        )
                     )
                 )
             }
@@ -174,6 +216,26 @@ object OpenAIClient {
                         "Missing dependency array in useEffect could cause infinite re-renders",
                         "No cleanup function for async operations may cause memory leaks",
                         "Missing key props in list rendering affects performance"
+                    ),
+                    githubRepos = listOf(
+                        GitHubRepo(
+                            name = "React Query",
+                            url = "https://github.com/tannerlinsley/react-query",
+                            description = "Powerful data synchronization for React - perfect for server state management",
+                            stars = "39.2k"
+                        ),
+                        GitHubRepo(
+                            name = "SWR",
+                            url = "https://github.com/vercel/swr",
+                            description = "Data fetching library for React with caching, revalidation, and more",
+                            stars = "29.1k"
+                        ),
+                        GitHubRepo(
+                            name = "React Hook Form",
+                            url = "https://github.com/react-hook-form/react-hook-form",
+                            description = "Performant, flexible forms with easy validation",
+                            stars = "39.8k"
+                        )
                     )
                 )
             }
@@ -279,7 +341,8 @@ object OpenAIClient {
     data class CodeAnalysis(
         val explanation: String,
         val improvements: List<Improvement>,
-        val bugs: List<String>
+        val bugs: List<String>,
+        val githubRepos: List<GitHubRepo> = emptyList()
     )
 
     // Public method to set API key
@@ -392,37 +455,186 @@ object OpenAIClient {
 
     private fun createResultsPanel(project: Project, response: ExplanationResponse): JPanel {
         val panel = JPanel(BorderLayout())
+        panel.background = Color.WHITE
         
-        // Create scrollable text area for explanation
-        val textArea = JTextArea(response.explanation).apply {
-            isEditable = false
-            wrapStyleWord = true
-            lineWrap = true
-            font = Font(Font.MONOSPACED, Font.PLAIN, 12)
-            border = BorderFactory.createEmptyBorder(10, 10, 10, 10)
-        }
+        // Main content panel with better styling
+        val mainPanel = JPanel()
+        mainPanel.layout = BoxLayout(mainPanel, BoxLayout.Y_AXIS)
+        mainPanel.background = Color.WHITE
+        mainPanel.border = BorderFactory.createEmptyBorder(15, 15, 15, 15)
         
-        val scrollPane = JScrollPane(textArea)
-        panel.add(scrollPane, BorderLayout.CENTER)
+        // Title with better font
+        val titleLabel = JLabel("📊 Code Analysis Results")
+        titleLabel.font = Font("Segoe UI", Font.BOLD, 16)
+        titleLabel.foreground = Color(0x2E3440)
+        titleLabel.alignmentX = Component.LEFT_ALIGNMENT
+        mainPanel.add(titleLabel)
+        mainPanel.add(Box.createVerticalStrut(10))
         
-        // Add improvements panel
+        // Explanation section with better formatting
+        val explanationArea = JTextPane()
+        explanationArea.contentType = "text/html"
+        explanationArea.text = formatExplanationAsHtml(response.explanation)
+        explanationArea.isEditable = false
+        explanationArea.background = Color(0xF8F9FA)
+        explanationArea.border = BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(Color(0xE9ECEF), 1),
+            BorderFactory.createEmptyBorder(12, 12, 12, 12)
+        )
+        explanationArea.font = Font("Segoe UI", Font.PLAIN, 13)
+        explanationArea.alignmentX = Component.LEFT_ALIGNMENT
+        
+        val explanationScrollPane = JScrollPane(explanationArea)
+        explanationScrollPane.border = null
+        explanationScrollPane.verticalScrollBarPolicy = JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED
+        explanationScrollPane.horizontalScrollBarPolicy = JScrollPane.HORIZONTAL_SCROLLBAR_NEVER
+        explanationScrollPane.preferredSize = Dimension(0, 150)
+        explanationScrollPane.alignmentX = Component.LEFT_ALIGNMENT
+        
+        mainPanel.add(explanationScrollPane)
+        mainPanel.add(Box.createVerticalStrut(15))
+        
+        // Improvements section
         if (response.improvements.isNotEmpty()) {
-            val improvementsPanel = JPanel()
-            improvementsPanel.layout = BoxLayout(improvementsPanel, BoxLayout.Y_AXIS)
-            improvementsPanel.border = BorderFactory.createTitledBorder("Suggested Improvements")
+            val improvementsLabel = JLabel("💡 Suggested Improvements")
+            improvementsLabel.font = Font("Segoe UI", Font.BOLD, 14)
+            improvementsLabel.foreground = Color(0x2E3440)
+            improvementsLabel.alignmentX = Component.LEFT_ALIGNMENT
+            mainPanel.add(improvementsLabel)
+            mainPanel.add(Box.createVerticalStrut(8))
             
             response.improvements.forEach { improvement ->
-                val button = JButton("Apply: ${improvement.title}").apply {
-                    addActionListener {
-                        EditorUtils.replaceSelection(project, improvement.suggestedCode)
-                    }
-                }
-                improvementsPanel.add(button)
-                improvementsPanel.add(Box.createVerticalStrut(5))
+                val improvementPanel = createImprovementPanel(project, improvement)
+                improvementPanel.alignmentX = Component.LEFT_ALIGNMENT
+                mainPanel.add(improvementPanel)
+                mainPanel.add(Box.createVerticalStrut(8))
             }
             
-            panel.add(improvementsPanel, BorderLayout.SOUTH)
+            mainPanel.add(Box.createVerticalStrut(10))
         }
+        
+        // GitHub repositories section
+        if (response.githubRepos.isNotEmpty()) {
+            val reposLabel = JLabel("🔗 Similar GitHub Repositories")
+            reposLabel.font = Font("Segoe UI", Font.BOLD, 14)
+            reposLabel.foreground = Color(0x2E3440)
+            reposLabel.alignmentX = Component.LEFT_ALIGNMENT
+            mainPanel.add(reposLabel)
+            mainPanel.add(Box.createVerticalStrut(8))
+            
+            response.githubRepos.forEach { repo ->
+                val repoPanel = createRepositoryPanel(repo)
+                repoPanel.alignmentX = Component.LEFT_ALIGNMENT
+                mainPanel.add(repoPanel)
+                mainPanel.add(Box.createVerticalStrut(6))
+            }
+        }
+        
+        val scrollPane = JScrollPane(mainPanel)
+        scrollPane.border = null
+        scrollPane.verticalScrollBarPolicy = JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED
+        scrollPane.horizontalScrollBarPolicy = JScrollPane.HORIZONTAL_SCROLLBAR_NEVER
+        
+        panel.add(scrollPane, BorderLayout.CENTER)
+        return panel
+    }
+    
+    private fun formatExplanationAsHtml(explanation: String): String {
+        return "<html><body style='font-family: Segoe UI, Arial, sans-serif; font-size: 13px; line-height: 1.5; color: #2E3440;'>" +
+                explanation.replace("\n", "<br>")
+                    .replace("##", "<h3 style='color: #5E81AC; margin: 10px 0 5px 0;'>")
+                    .replace("**", "<strong>")
+                    .replace("*", "<em>") +
+                "</body></html>"
+    }
+    
+    private fun createImprovementPanel(project: Project, improvement: Improvement): JPanel {
+        val panel = JPanel(BorderLayout())
+        panel.background = Color(0xFFFBF0)
+        panel.border = BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(Color(0xFFC107), 1),
+            BorderFactory.createEmptyBorder(10, 12, 10, 12)
+        )
+        
+        val leftPanel = JPanel(BorderLayout())
+        leftPanel.background = Color(0xFFFBF0)
+        
+        val titleLabel = JLabel(improvement.title)
+        titleLabel.font = Font("Segoe UI", Font.BOLD, 13)
+        titleLabel.foreground = Color(0x2E3440)
+        
+        val descLabel = JLabel("<html><div style='width: 300px; color: #4C566A;'>${improvement.description}</div></html>")
+        descLabel.font = Font("Segoe UI", Font.PLAIN, 12)
+        
+        val confidenceLabel = JLabel("Confidence: ${(improvement.confidence * 100).toInt()}%")
+        confidenceLabel.font = Font("Segoe UI", Font.ITALIC, 11)
+        confidenceLabel.foreground = Color(0x5E81AC)
+        
+        leftPanel.add(titleLabel, BorderLayout.NORTH)
+        leftPanel.add(descLabel, BorderLayout.CENTER)
+        leftPanel.add(confidenceLabel, BorderLayout.SOUTH)
+        
+        val applyButton = JButton("Apply Code")
+        applyButton.font = Font("Segoe UI", Font.BOLD, 12)
+        applyButton.background = Color(0x5E81AC)
+        applyButton.foreground = Color.WHITE
+        applyButton.border = BorderFactory.createEmptyBorder(8, 16, 8, 16)
+        applyButton.isFocusPainted = false
+        applyButton.addActionListener {
+            EditorUtils.replaceSelection(project, improvement.suggestedCode)
+        }
+        
+        panel.add(leftPanel, BorderLayout.CENTER)
+        panel.add(applyButton, BorderLayout.EAST)
+        
+        return panel
+    }
+    
+    private fun createRepositoryPanel(repo: GitHubRepo): JPanel {
+        val panel = JPanel(BorderLayout())
+        panel.background = Color(0xF0F8FF)
+        panel.border = BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(Color(0x0366D6), 1),
+            BorderFactory.createEmptyBorder(8, 12, 8, 12)
+        )
+        
+        val leftPanel = JPanel(BorderLayout())
+        leftPanel.background = Color(0xF0F8FF)
+        
+        val nameLabel = JLabel("📦 ${repo.name}")
+        nameLabel.font = Font("Segoe UI", Font.BOLD, 13)
+        nameLabel.foreground = Color(0x0366D6)
+        
+        val descLabel = JLabel("<html><div style='width: 350px; color: #586069;'>${repo.description}</div></html>")
+        descLabel.font = Font("Segoe UI", Font.PLAIN, 12)
+        
+        val starsLabel = JLabel("⭐ ${repo.stars} stars")
+        starsLabel.font = Font("Segoe UI", Font.PLAIN, 11)
+        starsLabel.foreground = Color(0x586069)
+        
+        leftPanel.add(nameLabel, BorderLayout.NORTH)
+        leftPanel.add(descLabel, BorderLayout.CENTER)
+        leftPanel.add(starsLabel, BorderLayout.SOUTH)
+        
+        val visitButton = JButton("Visit Repo")
+        visitButton.font = Font("Segoe UI", Font.BOLD, 11)
+        visitButton.background = Color(0x0366D6)
+        visitButton.foreground = Color.WHITE
+        visitButton.border = BorderFactory.createEmptyBorder(6, 12, 6, 12)
+        visitButton.isFocusPainted = false
+        visitButton.addActionListener {
+            try {
+                java.awt.Desktop.getDesktop().browse(java.net.URI(repo.url))
+            } catch (e: Exception) {
+                // Fallback - copy URL to clipboard
+                val clipboard = java.awt.Toolkit.getDefaultToolkit().systemClipboard
+                clipboard.setContents(java.awt.datatransfer.StringSelection(repo.url), null)
+                JOptionPane.showMessageDialog(panel, "URL copied to clipboard: ${repo.url}")
+            }
+        }
+        
+        panel.add(leftPanel, BorderLayout.CENTER)
+        panel.add(visitButton, BorderLayout.EAST)
         
         return panel
     }
