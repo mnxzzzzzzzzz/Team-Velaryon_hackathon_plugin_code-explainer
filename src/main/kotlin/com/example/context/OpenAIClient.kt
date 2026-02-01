@@ -45,10 +45,12 @@ object OpenAIClient {
         val context: String = ""
     )
 
+    // Enhanced data classes with GitHub suggestions
     data class ExplanationResponse(
         val explanation: String,
         val improvements: List<Improvement>,
-        val potentialBugs: List<String>
+        val potentialBugs: List<String>,
+        val githubRepos: List<GitHubRepo> = emptyList()
     )
 
     data class Improvement(
@@ -56,6 +58,13 @@ object OpenAIClient {
         val description: String,
         val suggestedCode: String,
         val confidence: Double
+    )
+
+    data class GitHubRepo(
+        val name: String,
+        val url: String,
+        val description: String,
+        val stars: String
     )
 
     // Intelligent demo responses based on code patterns
@@ -366,7 +375,7 @@ object OpenAIClient {
     private fun showResults(project: Project, response: ExplanationResponse) {
         // Find and activate the tool window
         val toolWindowManager = com.intellij.openapi.wm.ToolWindowManager.getInstance(project)
-        val toolWindow = toolWindowManager.getToolWindow("Code Context Explainer")
+        val toolWindow = toolWindowManager.getToolWindow("Code Oversight")
         
         toolWindow?.let { tw ->
             tw.activate(null)

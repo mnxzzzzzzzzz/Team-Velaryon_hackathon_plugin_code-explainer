@@ -16,7 +16,7 @@ class ExplainerPanel(private val project: Project) {
     }
 
     private fun setupUI() {
-        val label = JLabel("Select code and use 'Explain with Context' from the menu.")
+        val label = JLabel("Select code and use 'Analyze with Oversight' from the menu.")
         label.horizontalAlignment = SwingConstants.CENTER
         root.add(label, BorderLayout.CENTER)
     }

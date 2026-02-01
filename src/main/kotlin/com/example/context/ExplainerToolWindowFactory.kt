@@ -15,7 +15,7 @@ class ExplainerToolWindowFactory : ToolWindowFactory {
     }
 
     override fun init(toolWindow: ToolWindow) {
-        toolWindow.stripeTitle = "Code Explainer"
+        toolWindow.stripeTitle = "Code Oversight"
     }
 
     override fun shouldBeAvailable(project: Project) = true

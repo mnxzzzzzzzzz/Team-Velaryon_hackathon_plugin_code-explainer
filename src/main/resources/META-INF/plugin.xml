@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <idea-plugin>
-    <id>com.example.context.code-context-explainer</id>
-    <name>Code Context Explainer</name>
-    <vendor>Hackathon Team</vendor>
+    <id>com.example.context.code-oversight</id>
+    <name>Code Oversight</name>
+    <vendor>Team Velaryon</vendor>
     <version>1.0.0</version>
 
     <description>
         <![CDATA[
-        AI-powered code explanations with full repository context.
-        Select code, right-click "Explain with Context" to get AI analysis.
+        AI-powered code analysis with intelligent oversight and repository insights.
+        Select code, right-click "Analyze with Oversight" to get smart analysis with GitHub recommendations.
         ]]>
     </description>
 
@@ -19,21 +19,21 @@
     <depends>com.intellij.modules.java</depends>
 
     <extensions defaultExtensionNs="com.intellij">
-        <toolWindow id="Code Context Explainer"
+        <toolWindow id="Code Oversight"
                     anchor="right"
                     factoryClass="com.example.context.ExplainerToolWindowFactory"/>
 
         <projectConfigurable instance="com.example.context.SettingsConfigurable"
-                             displayName="Code Context Explainer"
-                             id="preferences.CodeContextExplainer"/>
+                             displayName="Code Oversight"
+                             id="preferences.CodeOversight"/>
     </extensions>
 
     <actions>
         <action
-                id="ExplainWithContext"
+                id="AnalyzeWithOversight"
                 class="com.example.context.ExplainAction"
-                text="Explain with Context"
-                description="Explain selected code using AI and repository context">
+                text="Analyze with Oversight"
+                description="Analyze selected code using AI and repository context with GitHub insights">
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
         </action>
     </actions>

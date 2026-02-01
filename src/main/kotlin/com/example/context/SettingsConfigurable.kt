@@ -16,7 +16,7 @@ class SettingsConfigurable : Configurable {
     private var modified = false
 
     @Nls(capitalization = Nls.Capitalization.Title)
-    override fun getDisplayName() = "Code Context Explainer"
+    override fun getDisplayName() = "Code Oversight"
 
     override fun createComponent(): JComponent {
         val panel = JPanel().apply {
