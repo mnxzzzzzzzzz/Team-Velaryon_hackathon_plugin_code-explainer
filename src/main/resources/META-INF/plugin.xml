@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<idea-plugin>
+    <id>com.example.context.code-context-explainer</id>
+    <name>Code Context Explainer</name>
+    <vendor>Hackathon Team</vendor>
+    <version>1.0.0</version>
+
+    <description>
+        <![CDATA[
+        AI-powered code explanations with full repository context.
+        Select code, right-click "Explain with Context" to get AI analysis.
+        ]]>
+    </description>
+
+    <idea-version since-build="233" until-build="241.*"/>
+
+    <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.modules.lang</depends>
+    <depends>com.intellij.modules.java</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <toolWindow id="Code Context Explainer"
+                    anchor="right"
+                    factoryClass="com.example.context.ExplainerToolWindowFactory"/>
+
+        <projectConfigurable instance="com.example.context.SettingsConfigurable"
+                             displayName="Code Context Explainer"
+                             id="preferences.CodeContextExplainer"/>
+    </extensions>
+
+    <actions>
+        <action
+                id="ExplainWithContext"
+                class="com.example.context.ExplainAction"
+                text="Explain with Context"
+                description="Explain selected code using AI and repository context">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+        </action>
+    </actions>
+</idea-plugin>
